@@ -24,5 +24,8 @@ class GoogleTranslateProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__.'/../config/google-translate.php', 'google-translate'
         );
+        $this->publishes([
+            __DIR__.'/../config/google-translate.php' => config_path('google-translate.php'),
+        ], 'config');
     }
 }
