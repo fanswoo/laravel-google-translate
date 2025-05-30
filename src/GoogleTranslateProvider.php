@@ -1,11 +1,15 @@
 <?php
 
-namespace FF\Localization;
+namespace FF\GoogleTranslate;
 
-use Illuminate\Support\Facades\Route;
+use FF\GoogleTranslate\Facade\TranslateService;
+use FF\GoogleTranslate\GoogleTranslateClient\GoogleTranslateClient2;
+use FF\GoogleTranslate\GoogleTranslateClient\GoogleTranslateClient3;
+use Illuminate\Support\Arr;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
-class LocalizationProvider extends ServiceProvider
+class GoogleTranslateProvider extends ServiceProvider
 {
     public function boot()
     {
@@ -13,6 +17,12 @@ class LocalizationProvider extends ServiceProvider
 
     public function register()
     {
-        Route::get('/fanswoo/localization.js', LocalizationController::class);
+        $this->app->bind('laravel-google-translate', function ($app) {
+            return new TranslateService();
+        });
+
+        $this->mergeConfigFrom(
+            __DIR__.'/../config/google-translate.php', 'google-translate'
+        );
     }
 }

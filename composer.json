@@ -4,7 +4,8 @@
     "type": "library",
     "require": {
         "php": "^8.4",
-        "laravel/framework": "^11.0"
+        "laravel/framework": "^11.0",
+        "google/auth": "^1.47"
     },
     "keywords": [
         "laravel",
