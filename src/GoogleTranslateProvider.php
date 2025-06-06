@@ -2,6 +2,7 @@
 
 namespace FF\GoogleTranslate;
 
+use FF\GoogleTranslate\Console\Commands\TranslateLangCommand;
 use FF\GoogleTranslate\Facade\TranslateService;
 use FF\GoogleTranslate\GoogleTranslateClient\GoogleTranslateClient2;
 use FF\GoogleTranslate\GoogleTranslateClient\GoogleTranslateClient3;
@@ -13,6 +14,11 @@ class GoogleTranslateProvider extends ServiceProvider
 {
     public function boot()
     {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                TranslateLangCommand::class,
+            ]);
+        }
     }
 
     public function register()
