@@ -56,17 +56,21 @@ The package expects two configuration sources:
 New class `LocaleTranslation` provides functionality to scan Laravel language directories and translate them:
 - Scans all PHP files in source locale directory
 - Translates content to multiple target locales using existing Google Translate service
+- **Uses batch translation (`Translate::multiple()`) for improved performance**
 - Supports overwrite protection for existing translations
 - Handles nested array structures properly
 - Creates target locale directories automatically
 - Generates properly formatted PHP array files
+- Preserves source key order in translated files
 
 ### Testing
 
-- PHPUnit test suite with 44 tests covering all functionality
+- PHPUnit test suite with 58 tests covering all functionality
 - Tests are framework-agnostic and can run without full Laravel environment
 - Use `./vendor/bin/phpunit` to run all tests
 - Test functions use lowerCamelCase naming convention
 - Includes specific tests for multiple() method compatibility with both API versions
 - Includes tests for accurate translation counting in LocaleTranslation
 - Includes tests for key order preservation in translated files
+- Includes tests for progress bar functionality in translate:lang command
+- Includes tests for batch translation performance optimization

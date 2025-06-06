@@ -108,7 +108,7 @@ class LocaleTranslation
                     }
                 }
 
-                $translationResult = $this->translateArrayWithCount($sourceTranslations, $existingTranslations, $sourceLocale, $targetLocale, $overwrite);
+                $translationResult = $this->translateArrayWithCountBatch($sourceTranslations, $existingTranslations, $sourceLocale, $targetLocale, $overwrite);
                 
                 $this->writeTranslationFile($targetFilePath, $translationResult['data']);
                 
@@ -120,6 +120,36 @@ class LocaleTranslation
         }
 
         return $results;
+    }
+
+    protected function translateArrayWithCountBatch(array $sourceArray, array $existingArray, string $sourceLocale, string $targetLocale, bool $overwrite): array
+    {
+        // Step 1: Collect all texts that need translation
+        $textsToTranslate = $this->collectTextsForTranslation($sourceArray, $existingArray, '', $overwrite);
+        
+        if (empty($textsToTranslate)) {
+            return [
+                'data' => $this->buildResultArray($sourceArray, $existingArray, [], $overwrite),
+                'translated_count' => 0
+            ];
+        }
+        
+        // Step 2: Batch translate all texts
+        try {
+            $translations = Translate::multiple($textsToTranslate, $targetLocale, $sourceLocale);
+            $translatedTexts = $translations[$targetLocale] ?? [];
+        } catch (\Exception $e) {
+            // Fallback to original texts if translation fails
+            $translatedTexts = $textsToTranslate;
+        }
+        
+        // Step 3: Build result array with translated texts
+        $resultData = $this->buildResultArray($sourceArray, $existingArray, $translatedTexts, $overwrite);
+        
+        return [
+            'data' => $resultData,
+            'translated_count' => count($textsToTranslate)
+        ];
     }
 
     protected function translateArrayWithCount(array $sourceArray, array $existingArray, string $sourceLocale, string $targetLocale, bool $overwrite): array
@@ -169,6 +199,60 @@ class LocaleTranslation
     {
         $result = $this->translateArrayWithCount($sourceArray, $existingArray, $sourceLocale, $targetLocale, $overwrite);
         return $result['data'];
+    }
+
+    protected function collectTextsForTranslation(array $sourceArray, array $existingArray, string $prefix, bool $overwrite): array
+    {
+        $textsToTranslate = [];
+        
+        foreach ($sourceArray as $key => $value) {
+            $fullKey = $prefix === '' ? $key : $prefix . '.' . $key;
+            
+            if (is_array($value)) {
+                $existingSubArray = isset($existingArray[$key]) && is_array($existingArray[$key]) ? $existingArray[$key] : [];
+                $subTexts = $this->collectTextsForTranslation($value, $existingSubArray, $fullKey, $overwrite);
+                $textsToTranslate = array_merge($textsToTranslate, $subTexts);
+            } else {
+                if ($overwrite || !isset($existingArray[$key]) || empty($existingArray[$key])) {
+                    $textsToTranslate[$fullKey] = $value;
+                }
+            }
+        }
+        
+        return $textsToTranslate;
+    }
+
+    protected function buildResultArray(array $sourceArray, array $existingArray, array $translatedTexts, bool $overwrite, string $prefix = ''): array
+    {
+        $result = [];
+
+        // Iterate through source array to preserve key order
+        foreach ($sourceArray as $key => $value) {
+            $fullKey = $prefix === '' ? $key : $prefix . '.' . $key;
+            
+            if (is_array($value)) {
+                $existingSubArray = isset($existingArray[$key]) && is_array($existingArray[$key]) ? $existingArray[$key] : [];
+                $result[$key] = $this->buildResultArray($value, $existingSubArray, $translatedTexts, $overwrite, $fullKey);
+            } else {
+                if ($overwrite || !isset($existingArray[$key]) || empty($existingArray[$key])) {
+                    // Use translated text if available, otherwise fallback to original
+                    $result[$key] = $translatedTexts[$fullKey] ?? $value;
+                } else {
+                    // Use existing value but preserve source order
+                    $result[$key] = $existingArray[$key];
+                }
+            }
+        }
+
+        // Add any keys from existing array that are not in source array
+        // These will be appended at the end to preserve existing translations
+        foreach ($existingArray as $key => $value) {
+            if (!array_key_exists($key, $result)) {
+                $result[$key] = $value;
+            }
+        }
+
+        return $result;
     }
 
     protected function makeDirectory(string $path, int $mode = 0755, bool $recursive = false): bool

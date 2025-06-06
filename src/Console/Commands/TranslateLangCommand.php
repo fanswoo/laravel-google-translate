@@ -36,14 +36,27 @@ class TranslateLangCommand extends Command
         try {
             $localeTranslation = new LocaleTranslation($customPath);
             
-            $progressBar = $this->output->createProgressBar(count($targetLocales));
+            // Pre-scan source files to calculate total work
+            $sourceFiles = $this->scanSourceFiles($localeTranslation, $sourceLocale);
+            $totalFiles = count($sourceFiles) * count($targetLocales);
+            
+            if ($totalFiles === 0) {
+                $this->warn('No language files found in source locale.');
+                return self::SUCCESS;
+            }
+            
+            $this->info("Found " . count($sourceFiles) . " source files. Total translations: {$totalFiles}");
+            
+            $progressBar = $this->output->createProgressBar($totalFiles);
             $progressBar->start();
 
             $results = [];
             foreach ($targetLocales as $targetLocale) {
                 $result = $localeTranslation->translate($sourceLocale, [$targetLocale], $overwrite);
                 $results[$targetLocale] = $result[$targetLocale];
-                $progressBar->advance();
+                
+                // Advance progress bar by number of files processed for this locale
+                $progressBar->advance(count($sourceFiles));
             }
 
             $progressBar->finish();
@@ -112,5 +125,27 @@ class TranslateLangCommand extends Command
         }
 
         $this->info('Translation completed!');
+    }
+
+    protected function scanSourceFiles(LocaleTranslation $localeTranslation, string $sourceLocale): array
+    {
+        $reflection = new \ReflectionClass($localeTranslation);
+        
+        // Get the langPath property
+        $langPathProperty = $reflection->getProperty('langPath');
+        $langPathProperty->setAccessible(true);
+        $langPath = $langPathProperty->getValue($localeTranslation);
+        
+        $sourceLocalePath = $langPath . DIRECTORY_SEPARATOR . $sourceLocale;
+        
+        if (!is_dir($sourceLocalePath)) {
+            return [];
+        }
+        
+        // Use the scanLangFiles method
+        $scanMethod = $reflection->getMethod('scanLangFiles');
+        $scanMethod->setAccessible(true);
+        
+        return $scanMethod->invoke($localeTranslation, $sourceLocalePath);
     }
 }
