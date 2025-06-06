@@ -108,11 +108,11 @@ class LocaleTranslation
                     }
                 }
 
-                $translatedData = $this->translateArray($sourceTranslations, $existingTranslations, $sourceLocale, $targetLocale, $overwrite);
+                $translationResult = $this->translateArrayWithCount($sourceTranslations, $existingTranslations, $sourceLocale, $targetLocale, $overwrite);
                 
-                $this->writeTranslationFile($targetFilePath, $translatedData);
+                $this->writeTranslationFile($targetFilePath, $translationResult['data']);
                 
-                $results[$fileName] = ['status' => 'success', 'translated_keys' => count($this->flattenArray($translatedData))];
+                $results[$fileName] = ['status' => 'success', 'translated_keys' => $translationResult['translated_count']];
                 
             } catch (\Exception $e) {
                 $results[$fileName] = ['status' => 'error', 'message' => $e->getMessage()];
@@ -122,27 +122,53 @@ class LocaleTranslation
         return $results;
     }
 
-    protected function translateArray(array $sourceArray, array $existingArray, string $sourceLocale, string $targetLocale, bool $overwrite): array
+    protected function translateArrayWithCount(array $sourceArray, array $existingArray, string $sourceLocale, string $targetLocale, bool $overwrite): array
     {
-        $result = $existingArray;
+        $result = [];
+        $translatedCount = 0;
 
+        // Iterate through source array to preserve key order
         foreach ($sourceArray as $key => $value) {
             if (is_array($value)) {
-                $existingSubArray = isset($result[$key]) && is_array($result[$key]) ? $result[$key] : [];
-                $result[$key] = $this->translateArray($value, $existingSubArray, $sourceLocale, $targetLocale, $overwrite);
+                $existingSubArray = isset($existingArray[$key]) && is_array($existingArray[$key]) ? $existingArray[$key] : [];
+                $subResult = $this->translateArrayWithCount($value, $existingSubArray, $sourceLocale, $targetLocale, $overwrite);
+                $result[$key] = $subResult['data'];
+                $translatedCount += $subResult['translated_count'];
             } else {
-                if ($overwrite || !isset($result[$key]) || empty($result[$key])) {
+                if ($overwrite || !isset($existingArray[$key]) || empty($existingArray[$key])) {
                     try {
                         $translatedValue = Translate::get($value, $targetLocale, $sourceLocale);
                         $result[$key] = $translatedValue;
+                        $translatedCount++; // Increment only when actually translated
                     } catch (\Exception $e) {
                         $result[$key] = $value;
+                        // Don't increment count for failed translations
                     }
+                } else {
+                    // Use existing value but preserve source order
+                    $result[$key] = $existingArray[$key];
                 }
             }
         }
 
-        return $result;
+        // Add any keys from existing array that are not in source array
+        // These will be appended at the end to preserve existing translations
+        foreach ($existingArray as $key => $value) {
+            if (!array_key_exists($key, $result)) {
+                $result[$key] = $value;
+            }
+        }
+
+        return [
+            'data' => $result,
+            'translated_count' => $translatedCount
+        ];
+    }
+
+    protected function translateArray(array $sourceArray, array $existingArray, string $sourceLocale, string $targetLocale, bool $overwrite): array
+    {
+        $result = $this->translateArrayWithCount($sourceArray, $existingArray, $sourceLocale, $targetLocale, $overwrite);
+        return $result['data'];
     }
 
     protected function makeDirectory(string $path, int $mode = 0755, bool $recursive = false): bool
