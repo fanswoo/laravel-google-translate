@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./vendor/bin/phpunit:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(composer:*)",
+      "Bash(grep:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": []
+  }
+}
