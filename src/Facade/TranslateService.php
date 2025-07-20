@@ -4,6 +4,7 @@ namespace FF\GoogleTranslate\Facade;
 
 use FF\GoogleTranslate\GoogleTranslateClient\GoogleTranslateClient2;
 use FF\GoogleTranslate\GoogleTranslateClient\GoogleTranslateClient3;
+use FF\GoogleTranslate\HtmlTranslation\HtmlTranslation;
 
 class TranslateService
 {
@@ -30,7 +31,7 @@ class TranslateService
         $apiVersion = config('google-translate.api_version', 'v2');
         $targetLanguages = is_array($targetLanguage) ? $targetLanguage : [$targetLanguage];
         $translates = [];
-        
+
         foreach($targetLanguages as $targetLanguage)
         {
             if($apiVersion === 'v2')
@@ -58,15 +59,23 @@ class TranslateService
         return $translates;
     }
 
+    public function html(string $html, string $targetLanguage, ?string $sourceLanguage = null, ?string $apiVersion = null): string
+    {
+        $htmlTranslation = new HtmlTranslation();
+        
+        return $htmlTranslation->translate($html, $targetLanguage, $sourceLanguage);
+    }
+
+
     protected function translateMultipleWithV2(array $texts, string $targetLanguage, ?string $sourceLanguage = null): array
     {
         $client = new GoogleTranslateClient2;
         $client->setApiKey(config('services.google_translate_v2.api_key'));
-        
+
         $translates = [];
         foreach ($texts as $key => $text) {
             $result = $client->translate($text, $targetLanguage, $sourceLanguage);
-            
+
             // Handle error responses from v2 client
             if (is_array($result) && (isset($result['error']) || isset($result['httpCode']))) {
                 // For compatibility, return empty string on error (same as v3 behavior)
@@ -75,7 +84,7 @@ class TranslateService
                 $translates[$key] = $result;
             }
         }
-        
+
         return $translates;
     }
 }
