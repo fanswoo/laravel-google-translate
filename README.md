@@ -117,6 +117,7 @@ $results = $localeTranslation->translate('en', ['fr_FR'], true);
 ### Google Translate API v3
 - Service account authentication
 - More secure and feature-rich
+- Without `GOOGLE_TRANSLATE_SERVICE_ACCOUNT_CREDENTIALS_PATH`, the client uses the Application Default Credentials, such as the service account of a Cloud Run service or Compute Engine instance. That account needs the Cloud Translation API User role (`roles/cloudtranslate.user`) in the project that `GOOGLE_TRANSLATE_PROJECT_ID` names. A path that is set must point to an existing key file.
 - Required for batch operations via `multiple()` method
 
 The package automatically uses v3 for the `multiple()` method regardless of the configured version.

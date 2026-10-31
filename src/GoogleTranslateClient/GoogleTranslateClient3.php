@@ -2,7 +2,9 @@
 
 namespace FF\GoogleTranslate\GoogleTranslateClient;
 
+use Google\Auth\ApplicationDefaultCredentials;
 use Google\Auth\Credentials\ServiceAccountCredentials;
+use Google\Auth\FetchAuthTokenInterface;
 use Google\Auth\HttpHandler\HttpHandlerFactory;
 
 class GoogleTranslateClient3
@@ -10,7 +12,7 @@ class GoogleTranslateClient3
 
     protected string $projectId;
 
-    protected string $serviceAccountKeyFilePath;
+    protected ?string $serviceAccountKeyFilePath = null;
 
     protected array $errorMessage = [];
 
@@ -19,12 +21,38 @@ class GoogleTranslateClient3
         $this->projectId = $projectId;
     }
 
-    public function setServiceAccountCredentialsPath(string $path): void
+    /**
+     * Set the service account key file that the client signs its requests
+     * with. Without a path, the client uses the Application Default
+     * Credentials, such as the service account of a Cloud Run service.
+     */
+    public function setServiceAccountCredentialsPath(?string $path): void
     {
+        if ($path === null || $path === '') {
+            $this->serviceAccountKeyFilePath = null;
+
+            return;
+        }
+
         if (!file_exists($path)) {
             throw new \InvalidArgumentException("服務帳戶金鑰檔案不存在: {$path}");
         }
         $this->serviceAccountKeyFilePath = $path;
+    }
+
+    /**
+     * The credentials of the key file, or the Application Default Credentials
+     * when no key file is set.
+     *
+     * @param  array<int, string>  $scopes
+     */
+    protected function credentials(array $scopes): FetchAuthTokenInterface
+    {
+        if ($this->serviceAccountKeyFilePath === null) {
+            return ApplicationDefaultCredentials::getCredentials($scopes);
+        }
+
+        return new ServiceAccountCredentials($scopes, $this->serviceAccountKeyFilePath);
     }
 
     protected function getAccessToken(): ?string
@@ -32,7 +60,7 @@ class GoogleTranslateClient3
         try {
             $scopes = ['https://www.googleapis.com/auth/cloud-translation'];
 
-            $credentials = new ServiceAccountCredentials($scopes, $this->serviceAccountKeyFilePath);
+            $credentials = $this->credentials($scopes);
 
             $tokenData = $credentials->fetchAuthToken(HttpHandlerFactory::build());
             if (isset($tokenData['access_token'])) {

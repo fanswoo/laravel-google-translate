@@ -22,7 +22,7 @@ Since this is a Laravel package library:
 
 **Client Implementation**
 - `GoogleTranslateClient2.php`: Handles Google Translate API v2 using API key authentication
-- `GoogleTranslateClient3.php`: Handles Google Translate API v3 using service account credentials
+- `GoogleTranslateClient3.php`: Handles Google Translate API v3 using service account credentials: the key file at the configured path, or the Application Default Credentials when no path is configured
 
 ### API Version Handling
 
